@@ -1,0 +1,67 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] [-l] [-i] [-o] -- program to combine video and subtitle files
+
+where:
+    -h  show this help text
+    -l  override video location (defaults to working directory)
+    -i  override input location (defaults to working directory)
+    -o  override output location (defaults to working directory)"
+
+base_location=$(pwd)
+input_path=$(pwd)
+output_path=$(pwd)
+output_file_suffix="MERGED"
+
+while getopts ":hl:i:o:" opt; do
+  case $opt in
+    h) echo "$usage"
+       exit 1
+       ;; 
+    l) input_path=$OPTARG
+       output_path=$OPTARG
+       ;;
+    i) input_path=$OPTARG
+       output_path=$OPTARG
+       ;;
+    o) output_path=$OPTARG;;
+    :) printf "missing argument for -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+   \?) printf "illegal option: -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+  esac
+done
+
+echo Welcome to subtitle merger!
+echo "Reading from: $input_path"
+echo "Writing to: $output_path"
+echo
+
+echo "Creating output directory"
+output_path="${output_path}/merged_output"
+mkdir $output_path
+echo
+
+while read video_extension; do
+  cd "$input_path"
+  for video in *.$video_extension; do
+    if test -f "$video"; then
+      name=$(basename "$video" ."$video_extension")
+      echo "Converting \"$name\""
+
+      if test -f "${name}.srt"; then
+        ffmpeg -i "$name"."$video_extension" -i "$name".srt -map 0 -map 1 -c copy -metadata:s:0 language=eng -metadata:s:s:0 handler="English" "${output_path}/${name}[${output_file_suffix}].${video_extension}" > out 2>&1
+      else
+        echo "[ERROR] No matching subtitle file found."
+        echo
+      fi
+    fi
+  done
+  cd "$base_location"
+done < video_extensions
+
+echo "Processing complete."
